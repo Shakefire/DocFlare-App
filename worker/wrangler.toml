@@ -21,18 +21,16 @@ INVITATION_TTL_SECONDS = 604800
 [[d1_databases]]
 binding = "DB"
 database_name = "docflare-db"
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "aedddebb-a8e9-4753-9f85-e75fdb8e380a"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "docflare-documents"
-# preview_bucket_name = "docflare-documents-dev"  # Optional: for local dev
 
 [[kv_namespaces]]
 binding = "KV"
-id = "REPLACE_WITH_YOUR_KV_ID"
-preview_id = "REPLACE_WITH_YOUR_KV_PREVIEW_ID"
+id = "75a4ab6a19704a6db30cee7516ca04f5"
 
 [triggers]
 crons = ["0 2 * * *"]
