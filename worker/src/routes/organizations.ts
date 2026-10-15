@@ -192,13 +192,90 @@ organizationRoutes.post('/organizations/:organizationId/invitations', requireAut
         email,
         role,
         expires_at: expiry,
-        ...(c.env.ENVIRONMENT === 'test' || c.env.ENVIRONMENT === 'development'
-          ? { debugInvitationToken: token }
-          : {}),
+        token,
+        invitation_url: `docflare://accept-invitation?token=${token}`,
+        message: 'Invitation created. In development/testing, copy and share the invitation token.',
       },
     },
     201
   );
+});
+
+// GET /api/v1/organizations/:organizationId/invitations
+// List pending invitations for the organization
+organizationRoutes.get('/organizations/:organizationId/invitations', requireAuth, async (c) => {
+  const auth = c.get('auth');
+  const { organizationId } = c.req.param();
+  const member = await resolveOrgMembership(c.env.DB, auth.userId, organizationId);
+  if (!member) throw Errors.notFound('Organization');
+  requireCapability(member.role, 'active', 'member.manage');
+
+  const pending = await c.env.DB
+    .prepare(
+      `SELECT id, organization_id, email_normalized, role, expires_at, created_at
+       FROM organization_invitations
+       WHERE organization_id = ? AND accepted_at IS NULL AND revoked_at IS NULL
+       ORDER BY created_at DESC`
+    )
+    .bind(organizationId)
+    .all();
+
+  return c.json({ data: pending.results });
+});
+
+// POST /api/v1/organizations/:organizationId/members
+// Directly add an existing registered user to the organization
+organizationRoutes.post('/organizations/:organizationId/members', requireAuth, requireVerifiedEmail, async (c) => {
+  const auth = c.get('auth');
+  const { organizationId } = c.req.param();
+  const actor = await resolveOrgMembership(c.env.DB, auth.userId, organizationId);
+  if (!actor) throw Errors.notFound('Organization');
+  requireCapability(actor.role, 'active', 'member.manage');
+
+  const body = await c.req.json().catch(() => null);
+  if (!body) throw Errors.badRequest('Invalid JSON body.');
+  const { email, role } = body as { email?: string; role?: string };
+  if (!email || !role) throw Errors.unprocessable('Email and role are required.');
+  if (!['admin', 'manager', 'viewer'].includes(role)) {
+    throw Errors.unprocessable('Role must be admin, manager, or viewer.');
+  }
+
+  const emailNormalized = normalizeEmail(email);
+  const targetUser = await c.env.DB
+    .prepare('SELECT id, email FROM users WHERE email_normalized = ? LIMIT 1')
+    .bind(emailNormalized)
+    .first<{ id: string; email: string }>();
+
+  if (!targetUser) {
+    throw Errors.notFound(`No registered user found with email "${email}". Please ask them to create an account first, or use Send Invitation.`);
+  }
+
+  const existingMember = await c.env.DB
+    .prepare('SELECT id FROM organization_members WHERE organization_id = ? AND user_id = ? LIMIT 1')
+    .bind(organizationId, targetUser.id)
+    .first();
+
+  if (existingMember) {
+    throw Errors.conflict('That user is already a member of this organization.');
+  }
+
+  const memberId = generateId();
+  const now = new Date().toISOString();
+  await c.env.DB
+    .prepare('INSERT INTO organization_members (id, organization_id, user_id, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(memberId, organizationId, targetUser.id, role, 'active', now, now)
+    .run();
+
+  await writeAuditLog(c.env.DB, {
+    organizationId,
+    actorUserId: auth.userId,
+    action: 'member.role_changed',
+    resourceType: 'member',
+    resourceId: memberId,
+    metadata: { added_user_email: emailNormalized, role },
+  });
+
+  return c.json({ data: { id: memberId, user_id: targetUser.id, email: targetUser.email, role, status: 'active' } }, 201);
 });
 
 // POST /api/v1/invitations/accept

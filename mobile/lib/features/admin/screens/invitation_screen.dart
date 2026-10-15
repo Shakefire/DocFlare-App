@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -34,20 +35,109 @@ class _InvitationScreenState extends State<InvitationScreen> {
 
     setState(() => _isLoading = true);
     final orgProvider = context.read<OrganizationProvider>();
-    final ok = await orgProvider.inviteMember(email, _selectedRole);
+    final res = await orgProvider.inviteMember(email, _selectedRole);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (res != null) {
+      final token = res['token'] ?? '';
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: AppColors.success),
+              SizedBox(width: 8),
+              Text('Invitation Created', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Invitation created for $email as $_selectedRole.'),
+              const SizedBox(height: 14),
+              const Text('Single-Use Invitation Token:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: SelectableText(
+                  token.isNotEmpty ? token : 'Sent via email',
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Share this token with the user so they can accept it via "Switch Organization > Accept Invite".',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+          actions: [
+            if (token.isNotEmpty)
+              TextButton.icon(
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                label: const Text('Copy Token'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: token));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Invitation token copied to clipboard!')),
+                  );
+                },
+              ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Done', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(orgProvider.errorMessage ?? 'Failed to send invitation'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleDirectAdd() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final orgProvider = context.read<OrganizationProvider>();
+    final ok = await orgProvider.addMemberDirectly(email, _selectedRole);
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invitation sent to $email'), backgroundColor: AppColors.success),
+        SnackBar(content: Text('$email successfully added as $_selectedRole!'), backgroundColor: AppColors.success),
       );
       Navigator.of(context).pop();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(orgProvider.errorMessage ?? 'Failed to send invitation'),
+          content: Text(orgProvider.errorMessage ?? 'Failed to add member directly'),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -122,9 +212,21 @@ class _InvitationScreenState extends State<InvitationScreen> {
               ),
               const SizedBox(height: 32),
               AppButton(
-                label: 'Send Invitation Email',
+                label: 'Create & Share Invitation Link',
                 onPressed: _isLoading ? null : _handleInvite,
                 isLoading: _isLoading,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.person_add_rounded, size: 18),
+                label: const Text('Add Directly (If Already Registered)'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: AppColors.primary),
+                  foregroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: _isLoading ? null : _handleDirectAdd,
               ),
             ],
           ),

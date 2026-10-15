@@ -32,6 +32,14 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _performSearch();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -74,6 +82,7 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                 TextField(
                   controller: _searchController,
                   textInputAction: TextInputAction.search,
+                  onChanged: (_) => _performSearch(),
                   onSubmitted: (_) => _performSearch(),
                   decoration: InputDecoration(
                     hintText: 'Search documents by filename...',

@@ -81,18 +81,33 @@ class ApiClient {
     );
   }
 
-  Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
-    var uri = Uri.parse('$baseUrl$path');
+  Uri _buildUri(String path, [Map<String, String>? queryParams]) {
+    Uri uri;
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      uri = Uri.parse(path);
+    } else {
+      final cleanBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+      String cleanPath = path.startsWith('/') ? path : '/$path';
+      if (cleanBase.endsWith('/api/v1') && cleanPath.startsWith('/api/v1/')) {
+        cleanPath = cleanPath.substring(7); // strip redundant /api/v1
+      }
+      uri = Uri.parse('$cleanBase$cleanPath');
+    }
     if (queryParams != null && queryParams.isNotEmpty) {
       uri = uri.replace(queryParameters: queryParams);
     }
+    return uri;
+  }
+
+  Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
+    final uri = _buildUri(path, queryParams);
     final headers = await _headers();
     final response = await _client.get(uri, headers: headers).timeout(ApiConstants.timeout);
     return _handleResponse(response);
   }
 
   Future<dynamic> post(String path, {dynamic body}) async {
-    final uri = Uri.parse('$baseUrl$path');
+    final uri = _buildUri(path);
     final headers = await _headers();
     final response = await _client
         .post(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
@@ -101,7 +116,7 @@ class ApiClient {
   }
 
   Future<dynamic> put(String path, {dynamic body}) async {
-    final uri = Uri.parse('$baseUrl$path');
+    final uri = _buildUri(path);
     final headers = await _headers();
     final response = await _client
         .put(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
@@ -110,7 +125,7 @@ class ApiClient {
   }
 
   Future<dynamic> patch(String path, {dynamic body}) async {
-    final uri = Uri.parse('$baseUrl$path');
+    final uri = _buildUri(path);
     final headers = await _headers();
     final response = await _client
         .patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
@@ -119,41 +134,34 @@ class ApiClient {
   }
 
   Future<dynamic> delete(String path, {Map<String, String>? queryParams}) async {
-    var uri = Uri.parse('$baseUrl$path');
-    if (queryParams != null && queryParams.isNotEmpty) {
-      uri = uri.replace(queryParameters: queryParams);
-    }
+    final uri = _buildUri(path, queryParams);
     final headers = await _headers();
     final response = await _client.delete(uri, headers: headers).timeout(ApiConstants.timeout);
     return _handleResponse(response);
   }
 
-  /// Direct streaming binary upload for files (single file mode)
-  Future<dynamic> uploadFileStream(String path, File file, {Function(int sent, int total)? onProgress}) async {
-    final uri = Uri.parse('$baseUrl$path');
+  /// Direct binary upload of byte payload (Universal Web + Mobile)
+  Future<dynamic> uploadBytes(
+    String path,
+    List<int> bytes, {
+    String contentType = 'application/octet-stream',
+    Function(int sent, int total)? onProgress,
+  }) async {
+    final uri = _buildUri(path);
     final token = await _storage.getToken();
 
-    final request = http.StreamedRequest('PUT', uri);
-    if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
+    final headers = <String, String>{
+      'Content-Type': contentType,
+    };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
-    request.headers['Content-Type'] = 'application/octet-stream';
-    final totalBytes = await file.length();
-    request.contentLength = totalBytes;
 
-    var sentBytes = 0;
-    file.openRead().listen((chunk) {
-      request.sink.add(chunk);
-      sentBytes += chunk.length;
-      onProgress?.call(sentBytes, totalBytes);
-    }, onDone: () {
-      request.sink.close();
-    }, onError: (e) {
-      request.sink.addError(e);
-    });
-
-    final streamedResponse = await _client.send(request).timeout(ApiConstants.uploadTimeout);
-    final response = await http.Response.fromStream(streamedResponse);
+    onProgress?.call(0, bytes.length);
+    final response = await _client
+        .put(uri, headers: headers, body: bytes)
+        .timeout(ApiConstants.uploadTimeout);
+    onProgress?.call(bytes.length, bytes.length);
     return _handleResponse(response);
   }
 

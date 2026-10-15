@@ -85,10 +85,32 @@ class OrganizationProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> inviteMember(String email, String role) async {
+  Map<String, dynamic>? _lastInvitation;
+  Map<String, dynamic>? get lastInvitation => _lastInvitation;
+
+  Future<Map<String, dynamic>?> inviteMember(String email, String role) async {
+    if (_activeOrganization == null) return null;
+    try {
+      final res = await _api.post('/organizations/${_activeOrganization!.id}/invitations', body: {
+        'email': email.trim(),
+        'role': role,
+      });
+      _lastInvitation = (res is Map<String, dynamic> && res.containsKey('data'))
+          ? (res['data'] as Map<String, dynamic>)
+          : <String, dynamic>{};
+      notifyListeners();
+      return _lastInvitation;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> addMemberDirectly(String email, String role) async {
     if (_activeOrganization == null) return false;
     try {
-      await _api.post('/organizations/${_activeOrganization!.id}/invitations', body: {
+      await _api.post('/organizations/${_activeOrganization!.id}/members', body: {
         'email': email.trim(),
         'role': role,
       });

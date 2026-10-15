@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/file_utils.dart';
@@ -8,7 +9,8 @@ enum UploadTaskStatus { pending, uploading, completed, failed, cancelled }
 
 class UploadTask {
   final String id;
-  final File file;
+  final File? file;
+  final List<int>? bytes;
   final String displayName;
   final int fileSize;
   final String contentType;
@@ -22,7 +24,8 @@ class UploadTask {
 
   UploadTask({
     required this.id,
-    required this.file,
+    this.file,
+    this.bytes,
     required this.displayName,
     required this.fileSize,
     required this.contentType,
@@ -44,19 +47,56 @@ class UploadProvider extends ChangeNotifier {
 
   UploadProvider({ApiClient? api}) : _api = api ?? ApiClient();
 
+  Future<void> enqueuePlatformFile(
+    PlatformFile platformFile,
+    String orgId, {
+    String? folderId,
+    String? description,
+  }) async {
+    final fileName = platformFile.name;
+    final bytes = await platformFile.readAsBytes();
+    final fileSize = platformFile.lengthSync() ?? (await platformFile.length()) ?? bytes.length;
+    final contentType = FileUtils.getMimeType(fileName);
+
+    File? file;
+    if (platformFile.path != null) {
+      try {
+        file = File(platformFile.path!);
+      } catch (_) {}
+    }
+
+    final task = UploadTask(
+      id: '${DateTime.now().millisecondsSinceEpoch}_$fileName',
+      file: file,
+      bytes: bytes,
+      displayName: fileName,
+      fileSize: fileSize,
+      contentType: contentType,
+      folderId: folderId,
+      description: description,
+    );
+
+    _tasks.insert(0, task);
+    notifyListeners();
+
+    _processTask(task, orgId);
+  }
+
   Future<void> enqueueFile(
     File file,
     String orgId, {
     String? folderId,
     String? description,
   }) async {
-    final fileName = file.path.split(Platform.pathSeparator).last;
-    final fileSize = await file.length();
-    final contentType = FileUtils.getMimeType(file.path);
+    final fileName = file.path.split(RegExp(r'[\\/]')).last;
+    final bytes = await file.readAsBytes();
+    final fileSize = bytes.length;
+    final contentType = FileUtils.getMimeType(fileName);
 
     final task = UploadTask(
       id: '${DateTime.now().millisecondsSinceEpoch}_$fileName',
       file: file,
+      bytes: bytes,
       displayName: fileName,
       fileSize: fileSize,
       contentType: contentType,
@@ -91,10 +131,12 @@ class UploadProvider extends ChangeNotifier {
       task.progress = 0.15;
       notifyListeners();
 
-      // Step 2: Stream file to Worker direct R2 endpoint
-      await _api.uploadFileStream(
+      // Step 2: Stream/upload binary file payload to Worker direct R2 endpoint
+      final payload = task.bytes ?? await task.file!.readAsBytes();
+      await _api.uploadBytes(
         session.uploadUrl,
-        task.file,
+        payload,
+        contentType: task.contentType,
         onProgress: (sent, total) {
           if (total > 0) {
             task.progress = 0.15 + (sent / total) * 0.75;

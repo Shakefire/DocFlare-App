@@ -16,19 +16,32 @@ import { errorHandler } from './middleware/error';
 const app = new Hono<{ Bindings: Env }>();
 
 // Global middleware
-app.use('*', logger());
-app.use('*', secureHeaders());
-app.use('/api/*', async (c, next) => {
+// Clean CORS handler: dynamically reflect request Origin to permit credentials properly
+app.use('*', async (c, next) => {
+  const reqOrigin = c.req.header('Origin');
+  const allowedOrigin = c.env.CORS_ORIGIN && c.env.CORS_ORIGIN !== '*'
+    ? c.env.CORS_ORIGIN
+    : (reqOrigin || '*');
+
   const corsMiddleware = cors({
-    origin: c.env.CORS_ORIGIN || '*',
-    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
-    exposeHeaders: ['X-Request-Id'],
+    origin: allowedOrigin,
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Range', 'Accept'],
+    exposeHeaders: ['Content-Disposition', 'Content-Length', 'Content-Range', 'ETag', 'X-Request-Id'],
     maxAge: 86400,
     credentials: true,
   });
   return corsMiddleware(c, next);
 });
+
+// Explicit OPTIONS preflight handler
+app.options('*', (c) => c.text('', 204));
+
+// Secure headers configured to allow cross-origin API calls from web clients
+app.use('*', secureHeaders({
+  crossOriginResourcePolicy: 'cross-origin',
+  crossOriginOpenerPolicy: 'same-origin-allow-popups',
+}));
 
 // Root API info
 app.get('/', (c) => {

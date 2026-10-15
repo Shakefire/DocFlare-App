@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
@@ -73,14 +72,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         final docProvider = context.read<DocumentProvider>();
 
         for (final platformFile in files) {
-          if (platformFile.path != null) {
-            final file = File(platformFile.path!);
-            await uploadProvider.enqueueFile(
-              file,
-              org.id,
-              folderId: docProvider.currentFolder?.id,
-            );
-          }
+          await uploadProvider.enqueuePlatformFile(
+            platformFile,
+            org.id,
+            folderId: docProvider.currentFolder?.id,
+          );
         }
 
         if (!mounted) return;
@@ -369,79 +365,95 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       children: [
         const Text('Organization Settings', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.people_outline_rounded, color: AppColors.primary),
-                title: const Text('Members & Roles'),
-                subtitle: Text(isAdmin ? 'Manage invites and permissions' : 'View organization members'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MemberManagementScreen()));
-                },
-              ),
-              const Divider(height: 1, indent: 56),
-              ListTile(
-                leading: const Icon(Icons.pie_chart_outline_rounded, color: Colors.teal),
-                title: const Text('Storage Usage'),
-                subtitle: const Text('View quota and category breakdown'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StorageUsageScreen()));
-                },
-              ),
-              const Divider(height: 1, indent: 56),
-              ListTile(
-                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.warning),
-                title: const Text('Trash & Recovery'),
-                subtitle: const Text('Restore or permanently purge documents'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrashScreen()));
-                },
-              ),
-              if (isAdmin) ...[
-                const Divider(height: 1, indent: 56),
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
                 ListTile(
-                  leading: const Icon(Icons.history_rounded, color: Colors.deepPurple),
-                  title: const Text('Audit History'),
-                  subtitle: const Text('Access control and activity events'),
+                  leading: const Icon(Icons.people_outline_rounded, color: AppColors.primary),
+                  title: const Text('Members & Roles'),
+                  subtitle: Text(isAdmin ? 'Manage invites and permissions' : 'View organization members'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuditLogsScreen()));
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MemberManagementScreen()));
                   },
                 ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.pie_chart_outline_rounded, color: Colors.teal),
+                  title: const Text('Storage Usage'),
+                  subtitle: const Text('View quota and category breakdown'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StorageUsageScreen()));
+                  },
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded, color: AppColors.warning),
+                  title: const Text('Trash & Recovery'),
+                  subtitle: const Text('Restore or permanently purge documents'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrashScreen()));
+                  },
+                ),
+                if (isAdmin) ...[
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.history_rounded, color: Colors.deepPurple),
+                    title: const Text('Audit History'),
+                    subtitle: const Text('Access control and activity events'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuditLogsScreen()));
+                    },
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 24),
         const Text('Preferences & Switcher', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.swap_horiz_rounded, color: AppColors.accent),
-                title: const Text('Switch Organization'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgSelectScreen()));
-                },
-              ),
-              const Divider(height: 1, indent: 56),
-              ListTile(
-                leading: const Icon(Icons.person_outline_rounded, color: AppColors.textPrimary),
-                title: const Text('User Account Profile'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
-                },
-              ),
-            ],
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz_rounded, color: AppColors.accent),
+                  title: const Text('Switch Organization'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgSelectScreen()));
+                  },
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.person_outline_rounded, color: AppColors.textPrimary),
+                  title: const Text('User Account Profile'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ],
