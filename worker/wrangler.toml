@@ -1,0 +1,50 @@
+name = "docflare-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+APP_NAME = "Docflare"
+# CORS_ORIGIN should be set as a secret or environment var in production
+CORS_ORIGIN = "*"
+# Upload limits
+MAX_FILE_SIZE_BYTES = 524288000
+# 500 MB
+DEFAULT_ORG_QUOTA_BYTES = 10737418240
+# 10 GB
+TRASH_RETENTION_DAYS = 30
+UPLOAD_SESSION_TTL_SECONDS = 3600
+INVITATION_TTL_SECONDS = 604800
+# 7 days
+
+[[d1_databases]]
+binding = "DB"
+database_name = "docflare-db"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "docflare-documents"
+# preview_bucket_name = "docflare-documents-dev"  # Optional: for local dev
+
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_YOUR_KV_ID"
+preview_id = "REPLACE_WITH_YOUR_KV_PREVIEW_ID"
+
+[triggers]
+crons = ["0 2 * * *"]
+# Daily cleanup at 02:00 UTC
+
+[env.production]
+[env.production.vars]
+ENVIRONMENT = "production"
+CORS_ORIGIN = "https://YOUR_FLUTTER_APP_DOMAIN"
+
+# Secrets (set via wrangler secret put <NAME>):
+# JWT_SECRET               - 32+ byte random secret for session tokens
+# EMAIL_API_KEY            - API key for email provider (Resend)
+# EMAIL_FROM               - From address for transactional emails
+# ADMIN_EMAIL              - Initial super-admin contact (optional)
