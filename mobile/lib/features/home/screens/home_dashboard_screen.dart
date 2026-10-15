@@ -58,8 +58,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     }
 
     try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
+      final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: [
           'jpg', 'jpeg', 'png', 'webp',
@@ -69,11 +68,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       );
 
       if (!mounted) return;
-      if (result != null && result.files.isNotEmpty) {
+      if (files.isNotEmpty) {
         final uploadProvider = context.read<UploadProvider>();
         final docProvider = context.read<DocumentProvider>();
 
-        for (final platformFile in result.files) {
+        for (final platformFile in files) {
           if (platformFile.path != null) {
             final file = File(platformFile.path!);
             await uploadProvider.enqueueFile(

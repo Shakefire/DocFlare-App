@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.docflare"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

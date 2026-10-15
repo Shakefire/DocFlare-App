@@ -7,6 +7,8 @@ node_modules/
 
 # Flutter / Dart Build
 mobile/build/
+mobile/android/build/
+.gradle/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 mobile/.metadata
