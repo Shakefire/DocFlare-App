@@ -33,7 +33,7 @@ export function errorHandler(err: Error, c: Context<{ Bindings: Env }>): Respons
   }
 
   // Hide internal database or runtime stack traces from clients
-  console.error('[UNCAUGHT EXCEPTION]', err.message, err.stack);
+  console.error('[UNCAUGHT EXCEPTION]', err);
   return c.json(
     {
       error: {

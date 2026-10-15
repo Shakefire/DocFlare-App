@@ -16,7 +16,7 @@ export async function hashPassword(password: string): Promise<string> {
       name: 'PBKDF2',
       hash: 'SHA-256',
       salt,
-      iterations: 310000,
+      iterations: 100000,
     },
     keyMaterial,
     256
@@ -24,7 +24,7 @@ export async function hashPassword(password: string): Promise<string> {
   const hashArray = new Uint8Array(derivedBits);
   const saltHex = bufToHex(salt);
   const hashHex = bufToHex(hashArray);
-  return `pbkdf2_sha256:310000:${saltHex}:${hashHex}`;
+  return `pbkdf2_sha256:100000:${saltHex}:${hashHex}`;
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
@@ -45,7 +45,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
       name: 'PBKDF2',
       hash: 'SHA-256',
       salt,
-      iterations,
+      iterations: Math.min(iterations, 100000),
     },
     keyMaterial,
     256
