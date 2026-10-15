@@ -30,6 +30,26 @@ app.use('/api/*', async (c, next) => {
   return corsMiddleware(c, next);
 });
 
+// Root API info
+app.get('/', (c) => {
+  return c.json({
+    name: 'Docflare API',
+    version: '1.0.0',
+    description: 'Secure Document Management backend on Cloudflare Workers',
+    status: 'online',
+    endpoints: {
+      health: '/health',
+      api_base: '/api/v1',
+      auth: '/api/v1/auth',
+      organizations: '/api/v1/organizations',
+      documents: '/api/v1/documents',
+      folders: '/api/v1/folders',
+      search: '/api/v1/search',
+      admin: '/api/v1/admin',
+    },
+  });
+});
+
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
