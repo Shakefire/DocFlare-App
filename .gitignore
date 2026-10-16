@@ -12,6 +12,8 @@ mobile/android/build/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 mobile/.metadata
+*.apk
+*.aab
 
 # Cloudflare / Wrangler
 worker/.wrangler/
